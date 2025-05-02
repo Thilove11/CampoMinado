@@ -174,6 +174,9 @@ export default function Minesweeper() {
 
   function revealAdjacent(x: number, y: number) {
     if (!grid[x][y].revealed) return;
+
+    const newGrid = grid.map(row => row.map(cell => ({ ...cell })));
+
     let flagCount = 0;
     for (let dx = -1; dx <= 1; dx++) {
       for (let dy = -1; dy <= 1; dy++) {
@@ -184,13 +187,38 @@ export default function Minesweeper() {
           nx < gridSize &&
           ny >= 0 &&
           ny < gridSize &&
-          grid[nx][ny].flagged
+          newGrid[nx][ny].flagged
         ) {
           flagCount++;
         }
       }
     }
-    if (flagCount === grid[x][y].adjacentMines) {
+
+    if (flagCount === newGrid[x][y].adjacentMines) {
+      const reveal = (cx: number, cy: number) => {
+        if (
+          cx < 0 ||
+          cx >= gridSize ||
+          cy < 0 ||
+          cy >= gridSize ||
+          newGrid[cx][cy].revealed ||
+          newGrid[cx][cy].flagged
+        )
+          return;
+
+        newGrid[cx][cy].revealed = true;
+
+        if (newGrid[cx][cy].adjacentMines === 0) {
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+              if (dx !== 0 || dy !== 0) {
+                reveal(cx + dx, cy + dy);
+              }
+            }
+          }
+        }
+      };
+
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           const nx = x + dx;
@@ -200,12 +228,15 @@ export default function Minesweeper() {
             nx < gridSize &&
             ny >= 0 &&
             ny < gridSize &&
-            !grid[nx][ny].flagged
+            !newGrid[nx][ny].flagged
           ) {
-            revealCell(nx, ny);
+            reveal(nx, ny);
           }
         }
       }
+
+      setGrid(newGrid);
+      checkWin(newGrid);
     }
   }
 
@@ -268,8 +299,7 @@ export default function Minesweeper() {
                   ? cell.isMine
                     ? "bg-red-500 text-white"
                     : "bg-gray-200"
-                  : "bg-gray-400 text-white"}
-              `}
+                  : "bg-gray-400 text-white"}`}
               onClick={() => revealCell(x, y)}
               onContextMenu={(e) => toggleFlag(x, y, e)}
               onDoubleClick={() => revealAdjacent(x, y)}
